@@ -1,0 +1,40 @@
+Build phase:
+  stages:
+    Tests:
+      image: hub.talkdeskapp.com/goreleaser/goreleaser:v1.21.2
+      type: generic
+      steps:
+        - make test testacc
+      when:
+        - PR
+    Build tests:
+      type: generic
+      steps:
+        - k8s-ci/build-artifacts.sh terraform-provider-dynatrace 0.0.1
+      when:
+        - PR
+
+    Build artifacts:
+      type: generic
+      steps:
+        - k8s-ci/build-artifacts.sh
+      when:
+        - TAG
+    Raw Push Artifacts:
+      type: raw_push
+      when:
+        - TAG
+
+Deploy phase:
+  prd:
+    deploy mode: automatic
+    stages:
+      Upload artifacts to S3:
+        type: deploy_s3
+        buckets:
+          - name: td-infra-prd-us-east-1-s3-tfregistry
+            artifacts path: k8s-ci/output/download/
+            bucket path: talkdesk
+            region: us-east-1
+        when:
+          - TAG
